@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <stdbool.h>
 #include "Darwin.h"
 
 #define BUFFER_SIZE 1024  /* Maximum length of a line in input file */
@@ -28,6 +28,17 @@
 int initialize (void)
 {
 	return 1;
+}
+bool search(int x)
+{
+    struct Species* current = Species_head;  // Initialize current
+    while (current != NULL)
+    {
+        if (current->sid == x)
+            return true;
+        current = current->next;
+    }
+    return false;
 }
 
 /**
@@ -86,6 +97,30 @@ int insert_species (int sid)
  *         0 on failure
  */
 int insert_population(int gid, int sid, int cid){
+    struct Population * new_node=(struct Population*)malloc(sizeof(struct Population));
+    struct Population * curr;
+    struct Species *pSpecies=Species_head;
+    new_node->gid=gid;
+    new_node->sid=sid;
+    new_node->cid=cid;
+    if(search(sid)){
+        while (pSpecies->sid!=sid) {
+            pSpecies = pSpecies->next;
+        }
+    } else insert_species(sid);
+    //if list is empty or it goes at head
+    if(pSpecies->Population_head==NULL || pSpecies->Population_head->gid >= new_node->gid){
+        new_node->next=pSpecies->Population_head;
+        pSpecies->Population_head=new_node;
+    }
+    else{
+        curr=pSpecies->Population_head;
+        while (curr->next!=NULL && curr->next->gid < new_node->gid){
+            curr=curr->next;
+        }
+        new_node->next=curr->next;
+        curr->next=new_node;
+    }
 	return 1;
 }
 
@@ -183,7 +218,16 @@ int print_species(){
  *         0 on failure
  */
 int print_populations(){
-	return 1;
+    struct Species* curr=Species_head;
+    struct Population* pp=curr->Population_head;
+    while (curr!= NULL) {
+        while (pp != NULL) {
+        printf(" S:%d G:%d\n", curr->sid, pp->gid);
+        pp=pp->next;
+        }
+        curr = curr->next;
+    }
+    return 1;
 }
 
 /**
