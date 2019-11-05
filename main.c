@@ -29,6 +29,7 @@ int initialize (void)
 {
 	return 1;
 }
+
 bool search(int x)
 {
     struct Species* current = Species_head;  // Initialize current
@@ -72,8 +73,7 @@ int insert_species (int sid)
         curr = Species_head;
         // locate the node after which the new node
         // is to be inserted
-        while (curr->next != NULL &&
-               curr->next->sid < new_node->sid)
+        while (curr->next != NULL &&  curr->next->sid < new_node->sid)
             curr = curr->next;
 
         /* Make the appropriate links */
@@ -121,7 +121,28 @@ int insert_population(int gid, int sid, int cid){
         new_node->next=curr->next;
         curr->next=new_node;
     }
+    curr=pSpecies->Population_head;
+    while (curr->next!=NULL){
+        curr=curr->next;
+    }
+    pSpecies->Population_tail=curr;
 	return 1;
+}
+/**
+ * @brief delete species with ID <sid> and its populations
+ *
+ * @return 1 on success
+ *         0 on failure
+ */
+int delete_species(int sid){
+    struct Species* curr=Species_head;
+    while (curr->sid!=sid){
+        curr=curr->next;
+    }
+    curr->next->prev=curr->prev;
+    curr->prev->next=curr->next;
+    free(curr);
+    return 1;
 }
 
 /**
@@ -131,7 +152,28 @@ int insert_population(int gid, int sid, int cid){
  *         0 on failure
  */
 int merge_species(int sid1, int sid2, int sid3){
-	return 1;
+    struct Species* s1=Species_head;
+    struct Species* s2=Species_head;
+    insert_species(sid3);
+    while (s1->sid!=sid1){
+        s1=s1->next;
+    }
+    while (s2->sid!=sid2){
+        s2=s2->next;
+    }
+    struct Population* ps1=s1->Population_head;
+    struct Population* ps2=s2->Population_head;
+    while (ps1!=NULL){
+        insert_population(ps1->gid,sid3,ps1->cid);
+        ps1=ps1->next;
+    }
+    while (ps2!=NULL){
+        insert_population(ps2->gid,sid3,ps2->cid);
+        ps2=ps2->next;
+    }
+    delete_species(sid1);
+    delete_species(sid2);
+    return 1;
 }
 
 /**
@@ -154,15 +196,6 @@ int delete_population(int gid, int sid){
 	return 1;
 }
 
-/**
- * @brief delete species with ID <sid> and its populations
- *
- * @return 1 on success
- *         0 on failure
- */
-int delete_species(int sid){
-	return 1;
-}
 
 /**
  * @brief Remaining species evolve into homo sapiens.
@@ -204,7 +237,7 @@ int print_species(){
     struct Species* curr=Species_head;
     struct Species* last;
     while (curr!= NULL) {
-        printf(" %d ", curr->sid);
+        printf(" S: %d \n", curr->sid);
         last = curr;
         curr = curr->next;
     }
@@ -219,8 +252,8 @@ int print_species(){
  */
 int print_populations(){
     struct Species* curr=Species_head;
-    struct Population* pp=curr->Population_head;
     while (curr!= NULL) {
+        struct Population* pp=curr->Population_head;
         while (pp != NULL) {
         printf(" S:%d G:%d\n", curr->sid, pp->gid);
         pp=pp->next;
