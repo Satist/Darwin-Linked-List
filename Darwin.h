@@ -39,5 +39,17 @@ struct Species *Species_tail; // Pointer to last element of Species' list
 
 struct Population *hs_L; // Pointer to first element of homo Sapiens list
 
-
+int insert_species (int sid);
+int print_continents();
+int print_populations();
+int insert_population(int gid, int sid, int cid);
+int delete_species(int sid);
+int merge_species(int sid1, int sid2, int sid3);
+int distribute();
+int delete_population(int gid, int sid);
+int print_homo_sapiens();
+int evolution();
+int species_statistics();
+int population_statistics(int sid);
+int print_species();
 #endif /* __DARWIN_H__ */

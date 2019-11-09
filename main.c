@@ -30,17 +30,6 @@ int initialize (void)
 	return 1;
 }
 
-bool search(int x)
-{
-    struct Species* current = Species_head;  // Initialize current
-    while (current != NULL)
-    {
-        if (current->sid == x)
-            return true;
-        current = current->next;
-    }
-    return false;
-}
 
 /**
  * @brief insert new species in Species' list with ID <sid>
@@ -57,7 +46,6 @@ int insert_species (int sid)
     if (Species_head == NULL)
     {
         Species_head = new_node;
-        return 1;
     }
         // if the node is to be inserted at the beginning
         // of the doubly linked list
@@ -65,7 +53,6 @@ int insert_species (int sid)
         new_node->next = Species_head;
         new_node->next->prev = new_node;
         Species_head = new_node;
-        return 1;
     }
     else
     {
@@ -86,8 +73,14 @@ int insert_species (int sid)
 
         curr->next = new_node;
         new_node->prev = curr;
-        return 1;
     }
+    curr = Species_head;
+    while (curr->next != NULL){
+        curr=curr->next;
+    }
+    Species_tail=curr;
+    print_populations();
+    return 1;
 }
 
 /**
@@ -99,33 +92,32 @@ int insert_species (int sid)
 int insert_population(int gid, int sid, int cid){
     struct Population * new_node=(struct Population*)malloc(sizeof(struct Population));
     struct Population * curr;
-    struct Species *pSpecies=Species_head;
+    struct Species *speciesHead=Species_head;
     new_node->gid=gid;
     new_node->sid=sid;
     new_node->cid=cid;
-    if(search(sid)){
-        while (pSpecies->sid!=sid) {
-            pSpecies = pSpecies->next;
-        }
-    } else insert_species(sid);
+    while (speciesHead->sid!=sid) {
+        speciesHead = speciesHead->next;
+    }
     //if list is empty or it goes at head
-    if(pSpecies->Population_head==NULL || pSpecies->Population_head->gid >= new_node->gid){
-        new_node->next=pSpecies->Population_head;
-        pSpecies->Population_head=new_node;
+    if(speciesHead->Population_head==NULL || speciesHead->Population_head->gid >= new_node->gid){
+        new_node->next=speciesHead->Population_head;
+        speciesHead->Population_head=new_node;
     }
     else{
-        curr=pSpecies->Population_head;
+        curr=speciesHead->Population_head;
         while (curr->next!=NULL && curr->next->gid < new_node->gid){
             curr=curr->next;
         }
         new_node->next=curr->next;
         curr->next=new_node;
     }
-    curr=pSpecies->Population_head;
+    curr=speciesHead->Population_head;
     while (curr->next!=NULL){
         curr=curr->next;
     }
-    pSpecies->Population_tail=curr;
+    speciesHead->Population_tail=curr;
+    print_populations();
 	return 1;
 }
 /**
@@ -135,13 +127,19 @@ int insert_population(int gid, int sid, int cid){
  *         0 on failure
  */
 int delete_species(int sid){
-    struct Species* curr=Species_head;
+    struct Species* curr=Species_tail;
     while (curr->sid!=sid){
-        curr=curr->next;
+        curr=curr->prev;
     }
-    curr->next->prev=curr->prev;
-    curr->prev->next=curr->next;
+    if(curr->next!=NULL)
+        curr->next->prev = curr->prev;
+    if(curr->prev!=NULL)
+        curr->prev->next = curr->next;
     free(curr);
+    printf("SPECIES\n  ");
+    print_populations();
+    printf("CONTINENTS\n  ");
+    print_continents();
     return 1;
 }
 
@@ -173,6 +171,7 @@ int merge_species(int sid1, int sid2, int sid3){
     }
     delete_species(sid1);
     delete_species(sid2);
+    print_populations();
     return 1;
 }
 
@@ -183,6 +182,24 @@ int merge_species(int sid1, int sid2, int sid3){
  *         0 on failure
  */
 int distribute(){
+    for (int i = 0; i <= 4 ; ++i) {
+        continents[i]=(struct ContinentList*)malloc(sizeof(struct ContinentList));
+        continents[i]->sentinel=(struct ContinentPopulation*)malloc(sizeof(struct ContinentPopulation));
+        continents[i]->sentinel->gid=-1;
+    }
+    struct Species* species=Species_head;
+    while (species!=NULL){
+        struct Population* population=species->Population_head;
+        while (population!=NULL){
+            struct ContinentPopulation* new_population=(struct ContinentPopulation*)malloc(sizeof(struct ContinentPopulation));
+            new_population->gid=population->gid;
+            new_population->next = continents[population->cid]->populationList;
+            continents[population->cid]->populationList=new_population;
+            population=population->next;
+        }
+        species=species->next;
+    }
+    print_continents();
 	return 1;
 }
 
@@ -193,9 +210,54 @@ int distribute(){
  *         0 on failure
  */
 int delete_population(int gid, int sid){
-	return 1;
+    struct Species* species=Species_head;
+    while (species->sid!=sid){
+        species=species->next;
+    }
+    struct Population * population=species->Population_head;
+    struct Population *prevP=population;
+    if (population != NULL && population->gid == gid)
+    {
+        species->Population_head = population->next;   // Changed head
+    }
+    while (population != NULL && population->gid != gid)
+    {
+        prevP = population;
+        population = population->next;
+    }
+    if(continents[population->cid]!=NULL) {
+        struct ContinentPopulation *continentPopulation = continents[population->cid]->populationList;
+        struct ContinentPopulation *prevC = continentPopulation;
+        if (continentPopulation != NULL && continentPopulation->gid == gid) {
+            continents[population->cid]->populationList = continentPopulation->next;   // Changed head
+        }
+        while (continentPopulation != NULL && continentPopulation->gid != gid) {
+            prevC = continentPopulation;
+            continentPopulation = continentPopulation->next;
+        }
+        prevC->next=continentPopulation->next;
+        free(continentPopulation);
+    }
+    prevP->next = population->next;
+    int savecid=population->cid;
+    free(population);
+    struct Population* pP=species->Population_head;
+    printf("SPECIES\n  ");
+    printf("<S:%d>",species->sid);
+    while (pP!=NULL){
+        printf("<G:%d>,",pP->gid);
+        pP=pP->next;
+    }
+    printf("CONTINENTS\n  ");
+    printf("Continent %d: ",savecid);
+    struct ContinentPopulation* curr=continents[savecid]->populationList;
+    while (curr!=NULL){
+        printf("<%d>,",curr->gid);
+        curr=curr->next;
+    }
+    printf("\n");
+    return 1;
 }
-
 
 /**
  * @brief Remaining species evolve into homo sapiens.
@@ -204,6 +266,21 @@ int delete_population(int gid, int sid){
  *         0 on failure
  */
 int evolution(){
+    struct Species* species=Species_head;
+    struct Population* populationHead=species->Population_head;
+    struct Population* populationTail=species->Population_tail;
+    struct Population* curr=populationHead;
+    while (species!=NULL){
+        if(species->next!=NULL) {
+            populationHead->next_species=species->next->Population_head;
+            populationTail->next=species->next->Population_head;
+            populationHead=populationHead->next_species;
+            populationTail=populationTail->next;
+        }
+        species=species->next;
+    }
+    hs_L=curr;
+    print_homo_sapiens();
 	return 1;
 }
 
@@ -214,7 +291,14 @@ int evolution(){
  *         0 on failure
  */
 int species_statistics(){
-	return 1;
+    int count=0;
+    struct Population* hs=hs_L;
+    while (hs!=NULL){
+        count++;
+        hs=hs->next_species;
+    }
+    printf("Homo Sapiens Species: %d\n",count);
+    return 1;
 }
 
 /**
@@ -224,6 +308,16 @@ int species_statistics(){
  *         0 on failure
  */
 int population_statistics(int sid){
+    struct Population* hs =hs_L;
+    int count=0;
+    while (hs->next_species!=NULL && hs->sid!=sid){
+        hs=hs->next_species;
+    }
+    while (hs!=NULL && hs->sid==sid){
+        count++;
+        hs=hs->next;
+    }
+    printf("Homo Sapiens populations: %d\n",count);
 	return 1;
 }
 
@@ -235,12 +329,11 @@ int population_statistics(int sid){
  */
 int print_species(){
     struct Species* curr=Species_head;
-    struct Species* last;
     while (curr!= NULL) {
-        printf(" S: %d \n", curr->sid);
-        last = curr;
+        printf(" <S:%d>", curr->sid);
         curr = curr->next;
     }
+    printf("\n");
     return 1;
 }
 
@@ -254,10 +347,12 @@ int print_populations(){
     struct Species* curr=Species_head;
     while (curr!= NULL) {
         struct Population* pp=curr->Population_head;
+        printf(" <S:%d>\n    ", curr->sid);
         while (pp != NULL) {
-        printf(" S:%d G:%d\n", curr->sid, pp->gid);
+        printf("<G:%d, C:%d>", pp->gid,pp->cid);
         pp=pp->next;
         }
+        printf("\n");
         curr = curr->next;
     }
     return 1;
@@ -270,6 +365,15 @@ int print_populations(){
  *         0 on failure
  */
 int print_continents(){
+    for(int i=0;i<4;i++){
+        struct ContinentPopulation* curr=continents[i]->populationList;
+        printf("Continent %d: ",i);
+        while (curr!=NULL){
+            printf("%d ",curr->gid);
+            curr=curr->next;
+        }
+        printf("\n");
+    }
 	return 1;
 }
 
@@ -280,6 +384,15 @@ int print_continents(){
  *         0 on failure
  */
 int print_homo_sapiens(){
+    struct Population* hs=hs_L;
+    printf("Homo Sapiens: ");
+    while (hs!=NULL){
+        printf("<%d,%d>",hs->gid,hs->sid);
+        if(hs->next!=NULL && hs->next->sid!=hs->sid)
+            printf("|");
+        hs=hs->next;
+    }
+    printf("\n");
 	return 1;
 }
 
@@ -291,6 +404,7 @@ int print_homo_sapiens(){
  */
 int free_all(void)
 {
+
 	return 1;
 }
 
